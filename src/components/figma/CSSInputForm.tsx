@@ -24,23 +24,66 @@ export function CSSInputForm({ onCSSSubmit, isProcessing = false }: CSSInputForm
       return;
     }
 
-    // Basic CSS validation
-    const hasSelectors = css.includes('{') && css.includes('}');
-    const hasProperties = css.includes(':') && css.includes(';');
-    const figmaClasses = css.includes('figma') || css.includes('layer') || css.includes('component');
+    try {
+      // More flexible CSS validation
+      const trimmedCSS = css.trim();
+      
+      // Check for basic CSS structure - look for either selectors or CSS properties
+      const hasSelectors = /[.#]?[\w-]+\s*\{[^}]*\}/g.test(trimmedCSS);
+      const hasProperties = /[\w-]+\s*:\s*[^;]+;?/g.test(trimmedCSS);
+      const hasValidBraces = (trimmedCSS.match(/\{/g) || []).length === (trimmedCSS.match(/\}/g) || []).length;
+      
+      // Check for common CSS patterns
+      const cssPatterns = [
+        /[\w-]+\s*:\s*[^;]+;/, // property: value;
+        /\.[a-zA-Z][\w-]*\s*\{/, // class selector
+        /#[a-zA-Z][\w-]*\s*\{/, // id selector
+        /[a-zA-Z][\w-]*\s*\{/, // element selector
+        /@[\w-]+/, // at-rules like @media
+      ];
+      
+      const hasValidPatterns = cssPatterns.some(pattern => pattern.test(trimmedCSS));
+      
+      // More lenient validation - accept if it has properties OR selectors OR valid patterns
+      if (!hasValidBraces) {
+        setValidationStatus('invalid');
+        setValidationMessage('Mismatched curly braces in CSS. Please check your CSS syntax.');
+        return;
+      }
+      
+      if (!hasSelectors && !hasProperties && !hasValidPatterns) {
+        setValidationStatus('invalid');
+        setValidationMessage('No valid CSS content detected. Please paste CSS code with selectors and properties.');
+        return;
+      }
 
-    if (!hasSelectors || !hasProperties) {
+      // Check for Figma-specific patterns
+      const figmaPatterns = [
+        /figma/i,
+        /layer/i,
+        /component/i,
+        /frame/i,
+        /group/i,
+        /auto-layout/i,
+        /\.[\w-]*\d+/, // classes with numbers (common in Figma exports)
+      ];
+      
+      const isFigmaCSS = figmaPatterns.some(pattern => pattern.test(trimmedCSS));
+      
+      if (isFigmaCSS) {
+        setValidationStatus('valid');
+        setValidationMessage('✅ Valid Figma CSS detected! This will enhance your JavaScript generation with accurate styling information.');
+      } else if (hasSelectors || hasProperties) {
+        setValidationStatus('valid');
+        setValidationMessage('✅ Valid CSS detected. While this appears to be generic CSS rather than Figma-generated CSS, it will still be processed.');
+      } else {
+        setValidationStatus('valid');
+        setValidationMessage('✅ CSS content detected and ready for processing.');
+      }
+      
+    } catch (error) {
       setValidationStatus('invalid');
-      setValidationMessage('Invalid CSS format. Please paste CSS code with selectors and properties.');
-      return;
-    }
-
-    if (figmaClasses) {
-      setValidationStatus('valid');
-      setValidationMessage('Valid Figma CSS detected! Ready to integrate with your JavaScript code.');
-    } else {
-      setValidationStatus('valid');
-      setValidationMessage('Valid CSS detected. Note: This appears to be generic CSS rather than Figma-generated CSS.');
+      setValidationMessage('Error parsing CSS content. Please check the format and try again.');
     }
   };
 
@@ -50,7 +93,8 @@ export function CSSInputForm({ onCSSSubmit, isProcessing = false }: CSSInputForm
   };
 
   const handleSubmit = () => {
-    if (cssData.trim() && validationStatus === 'valid') {
+    if (cssData.trim()) {
+      // Always submit if there's content, let the backend parser handle detailed validation
       onCSSSubmit(cssData);
     }
   };
@@ -72,12 +116,12 @@ export function CSSInputForm({ onCSSSubmit, isProcessing = false }: CSSInputForm
           <Textarea
             id="css-input"
             placeholder="Paste your CSS code here...
-Example:
-.button {
-  background: #3B82F6;
-  border-radius: 8px;
-  padding: 12px 24px;
-}"
+
+Examples of accepted formats:
+• Figma exported CSS
+• Standard CSS with selectors
+• CSS properties and values
+• Media queries and animations"
             value={cssData}
             onChange={(e) => handleCSSChange(e.target.value)}
             className="min-h-32 font-mono text-sm"
@@ -106,7 +150,7 @@ Example:
           
           <Button
             onClick={handleSubmit}
-            disabled={!cssData.trim() || validationStatus !== 'valid' || isProcessing}
+            disabled={!cssData.trim() || isProcessing}
             className="flex items-center gap-2"
           >
             {isProcessing ? (
@@ -132,6 +176,11 @@ Example:
             <li>Select "CSS (all layers)" from the options</li>
             <li>Paste the generated CSS code above</li>
           </ol>
+          <div className="mt-3 pt-3 border-t border-blue-200">
+            <p className="text-xs text-blue-700">
+              <strong>Note:</strong> You can also paste any valid CSS code. The tool accepts various CSS formats including custom styles, media queries, and design system tokens.
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
