@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { InputForm } from '../components/figma/InputForm';
 import { CSSInputForm } from '../components/figma/CSSInputForm';
@@ -9,7 +8,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ArrowLeft, AlertCircle, Code2, Zap, FileText, Palette, Layers } from 'lucide-react';
 import { figmaApi } from '../services/figma-api';
-import { enhancedCodeGenerator } from '../services/enhancedCodeGenerator';
+import { enhancedCodeGenerator, EnhancedFigmaToJSGenerator } from '../services/enhancedCodeGenerator';
 import { GeneratedJavaScript, FigmaApiResponse } from '../types/figma';
 import { ParsedCSSData } from '../services/cssParser';
 import { Link } from 'react-router-dom';
@@ -52,7 +51,7 @@ export default function FigmaGenerator() {
     setError(null);
 
     try {
-      const parsedCSS = enhancedCodeGenerator.constructor.parseCSS(cssText);
+      const parsedCSS = EnhancedFigmaToJSGenerator.parseCSS(cssText);
       setCSSData(parsedCSS);
       setCurrentStep('generate');
     } catch (err) {
