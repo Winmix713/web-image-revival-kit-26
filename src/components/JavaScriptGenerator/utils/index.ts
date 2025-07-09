@@ -3,27 +3,28 @@ import { FigmaApiResponse } from '../../../types/figma';
 import { ProcessedNode, ComponentStatistics } from '../types';
 
 export const processNodeStructure = (figmaData: FigmaApiResponse, fileKey: string) => {
+  if (!figmaData?.document) return null;
+
   const processNode = (node: any, depth = 0): ProcessedNode => {
     return {
-      id: node.id || `node-${Math.random().toString(36).substr(2, 9)}`,
-      name: node.name || 'Unnamed',
-      type: node.type || 'UNKNOWN',
+      id: node.id,
+      name: node.name,
+      type: node.type,
       depth,
-      ...(node.children && { children: node.children.map((child: any) => processNode(child, depth + 1)) }),
-      ...(node.fills && { fills: node.fills }),
-      ...(node.effects && { effects: node.effects }),
-      ...(node.style && { style: node.style }),
-      ...(node.absoluteBoundingBox && { absoluteBoundingBox: node.absoluteBoundingBox }),
-      ...(node.constraints && { constraints: node.constraints }),
-      ...(node.characters && { characters: node.characters }),
-      ...(node.componentPropertyDefinitions && { componentPropertyDefinitions: node.componentPropertyDefinitions })
+      fills: node.fills,
+      effects: node.effects,
+      absoluteBoundingBox: node.absoluteBoundingBox,
+      constraints: node.constraints,
+      characters: node.characters,
+      style: node.style,
+      children: node.children?.map((child: any) => processNode(child, depth + 1)) || []
     };
   };
 
   return {
     metaData: {
-      name: figmaData.name,
       fileKey,
+      name: figmaData.name,
       lastModified: figmaData.lastModified,
       version: figmaData.version,
       role: figmaData.role,
@@ -36,34 +37,29 @@ export const processNodeStructure = (figmaData: FigmaApiResponse, fileKey: strin
   };
 };
 
-export const calculateStatistics = (node: ProcessedNode): ComponentStatistics => {
+export const calculateStatistics = (processedDocument: ProcessedNode): ComponentStatistics => {
   let nodeCount = 0;
-  let textNodeCount = 0;
-  let componentCount = 0;
+  let textNodes = 0;
+  let componentInstances = 0;
   let maxDepth = 0;
-  const nodeTypes: Record<string, number> = {};
 
-  const traverse = (currentNode: ProcessedNode) => {
+  const traverse = (node: ProcessedNode, depth = 0) => {
     nodeCount++;
-    maxDepth = Math.max(maxDepth, currentNode.depth);
-    nodeTypes[currentNode.type] = (nodeTypes[currentNode.type] || 0) + 1;
-    
-    if (currentNode.type === 'TEXT') textNodeCount++;
-    if (currentNode.type === 'COMPONENT' || currentNode.type === 'INSTANCE') componentCount++;
-    
-    if (currentNode.children) {
-      currentNode.children.forEach(traverse);
-    }
+    maxDepth = Math.max(maxDepth, depth);
+
+    if (node.type === 'TEXT') textNodes++;
+    if (node.type === 'INSTANCE') componentInstances++;
+
+    node.children?.forEach(child => traverse(child, depth + 1));
   };
 
-  traverse(node);
+  traverse(processedDocument);
 
   return {
     totalNodes: nodeCount,
-    textNodes: textNodeCount,
-    components: componentCount,
+    textNodes,
+    componentInstances,
     maxDepth,
-    nodeTypes,
-    complexity: nodeCount < 20 ? 'low' : nodeCount < 50 ? 'medium' : 'high'
+    complexity: nodeCount > 50 ? 'high' : nodeCount > 20 ? 'medium' : 'low'
   };
 };
