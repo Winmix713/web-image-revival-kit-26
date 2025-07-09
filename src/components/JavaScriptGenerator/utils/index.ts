@@ -41,6 +41,7 @@ export const calculateStatistics = (processedDocument: ProcessedNode): Component
   let nodeCount = 0;
   let textNodes = 0;
   let componentInstances = 0;
+  let components = 0;
   let maxDepth = 0;
 
   const traverse = (node: ProcessedNode, depth = 0) => {
@@ -49,6 +50,7 @@ export const calculateStatistics = (processedDocument: ProcessedNode): Component
 
     if (node.type === 'TEXT') textNodes++;
     if (node.type === 'INSTANCE') componentInstances++;
+    if (node.type === 'COMPONENT') components++;
 
     node.children?.forEach(child => traverse(child, depth + 1));
   };
@@ -59,6 +61,7 @@ export const calculateStatistics = (processedDocument: ProcessedNode): Component
     totalNodes: nodeCount,
     textNodes,
     componentInstances,
+    components,
     maxDepth,
     complexity: nodeCount > 50 ? 'high' : nodeCount > 20 ? 'medium' : 'low'
   };

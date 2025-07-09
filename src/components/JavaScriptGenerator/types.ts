@@ -29,6 +29,7 @@ export interface ComponentStatistics {
   totalNodes: number;
   textNodes: number;
   componentInstances: number;
+  components: number;
   maxDepth: number;
   complexity: 'low' | 'medium' | 'high';
 }
